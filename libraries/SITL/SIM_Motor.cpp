@@ -140,8 +140,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
         float Lr = 0.5*Nb*air_density*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
         float Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
 
-        Vector3f Dr_hat(Vr.x,Vr.y,0); // Unit vector of drag in motor frame 
-        Dr_hat = normalize(Dr_hat); 
+        Vector3f Dr_hat(Vr.x,Vr.y,0)*(1/sqrtf(sq(Vr.x)+sq(Vr.y))); // Unit vector of drag in motor frame 
         Vector3f Lr_hat(0,0,-1); // Unit Vector for thrust in motor frame
 
         thrust = (inverse(rotation)*(Lr*Lr_hat)) - (inverse(rotation)*(Dr*Dr_hat)); // Use line below for previous thrust implementation with Blade Element Theory Drag
