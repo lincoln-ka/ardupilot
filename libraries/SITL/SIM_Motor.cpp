@@ -30,6 +30,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
                              const Vector3f &gyro,
                              float air_density,
                              float voltage,
+                             float rpm,
                              bool use_drag)
 {
 
@@ -98,27 +99,56 @@ void Motor::calculate_forces(const struct sitl_input &input,
     }
     last_change_usec = now;
 
+    Vector3f Vr = motor_vel;
+    Matrix3f rotation;
+    rotation.identity();
     // possibly rotate the thrust vector and the rotor torque
     if (!is_zero(roll) || !is_zero(pitch)) {
-        Matrix3f rotation;
         rotation.from_euler(radians(roll), radians(pitch), 0);
+        Vr = rotation * motor_vel;
         thrust = rotation * thrust;
         rotor_torque = rotation * rotor_torque;
     }
 
     if (use_drag) {
-        // calculate momentum drag per motor
-        const float momentum_drag_factor = momentum_drag_coefficient * sqrtf(air_density * true_prop_area);
-        Vector3f momentum_drag;
-        momentum_drag.x = momentum_drag_factor * motor_vel.x * (sqrtf(fabsf(thrust.y)) + sqrtf(fabsf(thrust.z)));
-        momentum_drag.y = momentum_drag_factor * motor_vel.y * (sqrtf(fabsf(thrust.x)) + sqrtf(fabsf(thrust.z)));
-        // The application of momentum drag to the Z axis is a 'hack' to compensate for incorrect modelling
-        // of the variation of thust with inflow velocity. If not applied, the vehicle will
-        // climb at an unrealistic rate during operation in STABILIZE. TODO replace prop and motor model in
-        // with one based on DC motor, momentum disc and blade element theory.
-        momentum_drag.z = momentum_drag_factor * motor_vel.z * (sqrtf(fabsf(thrust.x)) + sqrtf(fabsf(thrust.y)) + sqrtf(fabsf(thrust.z)));
+            //master branch implementation start//
 
-        thrust -= momentum_drag;
+        // Momentum drag is modelled as isotropic, scaled by the total
+        // thrust, which handles tilted motors correctly. The component
+        // along the rotor axis is really a 'hack' to compensate for
+        // incorrect modelling of the variation of thrust with inflow
+        // velocity. If not applied, the vehicle will climb at an
+        // unrealistic rate during operation in STABILIZE. TODO replace
+        // prop and motor model with one based on DC motor, momentum
+        // disc and blade element theory.
+        const float momentum_drag_factor = momentum_drag_coefficient * sqrtf(air_density * true_prop_area * thrust.length());
+        thrust -= motor_vel * momentum_drag_factor;
+
+        //master branch implementation end//
+        
+        
+        float Rr = sqrtf(true_prop_area/(3.1415)); // Rotor radius in (m)
+        float Vperp = sqrtf(sq(Vr.x)+sq(Vr.y)); // Velocity perpendicular to rotor (m/s). Use line below if checking corrolation with matlab 
+        //float Vhrr = vr.x
+        //motor rpm aquisition ref SIM_Frame.cpp:685
+
+        // Arace Griffon Pro Params
+        float Nb = 2; // Number of blades in rotor
+        float c = 0.025; // Blade cord (m) assumed constant
+        float Ct = (7*9.81)/(Nb*air_density*c*sq(Rr)*Rr*sq(5500)); //Coefficient of thrust assuming hover achieved at 5500rpm. TODO Check logs for hover rpm and change but use 5500 to verify implementation
+
+        float Lr = 0.5*Nb*air_density*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
+        float Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
+
+        Vector3f Dr_hat(Vr.x,Vr.y,0); // Unit vector of drag in motor frame 
+        Dr_hat = normalize(Dr_hat); 
+        Vector3f Lr_hat(0,0,-1); // Unit Vector for thrust in motor frame
+
+        thrust = (inverse(rotation)*(Lr*Lr_hat)) - (inverse(rotation)*(Dr*Dr_hat)); // Use line below for previous thrust implementation with Blade Element Theory Drag
+        // thrust -= (inverse(rotation)*(Dr*Dr_hat));
+
+
+
     }
 
     // calculate total torque in newton-meters

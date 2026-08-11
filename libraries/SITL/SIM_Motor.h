@@ -94,6 +94,7 @@ public:
                           const Vector3f &gyro, // rad/sec
                           float air_density,
                           float voltage,
+                          float rpm, // motor rpm from previous step
                           bool use_drag);
 
     uint16_t update_servo(uint16_t demand, uint64_t time_usec, float &last_value) const;
