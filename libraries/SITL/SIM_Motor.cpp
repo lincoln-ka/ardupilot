@@ -144,8 +144,8 @@ void Motor::calculate_forces(const struct sitl_input &input,
         Dr_hat *= 1/sqrtf(sq(Vr.x)+sq(Vr.y));
         Vector3f Lr_hat(0,0,-1); // Unit Vector for thrust in motor frame
 
-        thrust = (inverse(rotation)*(Lr*Lr_hat)) - (inverse(rotation)*(Dr*Dr_hat)); // Use line below for previous thrust implementation with Blade Element Theory Drag
-        // thrust -= (inverse(rotation)*(Dr*Dr_hat));
+        thrust = rotation.mul_transpose(Lr*Lr_hat) - rotation.mul_transpose(Dr*Dr_hat); // Use line below for previous thrust implementation with Blade Element Theory Drag
+        // thrust -= rotation.mul_transpose(Dr*Dr_hat);
 
 
 
