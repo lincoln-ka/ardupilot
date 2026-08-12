@@ -18,6 +18,7 @@
 
 #include "SIM_Motor.h"
 #include <AP_Motors/AP_Motors.h>
+#include <AP_Logger/AP_Logger.h>
 
 using namespace SITL;
 
@@ -139,6 +140,17 @@ void Motor::calculate_forces(const struct sitl_input &input,
 
         float Lr = 0.5*Nb*air_density*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
         float Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
+
+        // @LoggerMessage: BET
+        // @Description: Blade Element Theory rotor forces
+        // @Field: TimeUS: Time since system startup
+        // @Field: Instance: motor servo instance
+        // @Field: Lr: rotor lift
+        // @Field: Dr: rotor drag
+        AP::logger().WriteStreaming("BET", "TimeUS,Instance,Lr,Dr", "QBff",
+                                     AP_HAL::micros64(),
+                                     servo,
+                                     Lr, Dr);
 
         Vector3f Dr_hat(Vr.x,Vr.y,0); // Unit vector of drag in motor frame
         Dr_hat *= 1/sqrtf(sq(Vr.x)+sq(Vr.y));
