@@ -136,9 +136,10 @@ void Motor::calculate_forces(const struct sitl_input &input,
         // Arace Griffon Pro Params
         float Nb = 2; // Number of blades in rotor
         float c = 0.025; // Blade cord (m) assumed constant
-        float Ct = (7*9.81)/(Nb*air_density*c*sq(Rr)*Rr*sq(5500)); //Coefficient of thrust assuming hover achieved at 5500rpm. TODO Check logs for hover rpm and change but use 5500 to verify implementation
+        float rho = 1.2682; //used for checking matlab corrolation
+        float Ct = (7*9.81)/(Nb*rho*c*sq(Rr)*Rr*sq(5500)); //Coefficient of thrust assuming hover achieved at 5500rpm. TODO Check logs for hover rpm and change but use 5500 to verify implementation
 
-        float Lr = 0.5*Nb*air_density*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
+        float Lr = 0.5*Nb*rho*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
         float Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
 
         // @LoggerMessage: BET
@@ -156,8 +157,8 @@ void Motor::calculate_forces(const struct sitl_input &input,
         Dr_hat *= 1/sqrtf(sq(Vr.x)+sq(Vr.y));
         Vector3f Lr_hat(0,0,-1); // Unit Vector for thrust in motor frame
 
-        thrust = rotation.mul_transpose(Lr_hat*Lr) - rotation.mul_transpose(Dr_hat*Dr); // Use line below for previous thrust implementation with Blade Element Theory Drag
-        // thrust -= rotation.mul_transpose(Dr_hat*Dr);
+        //thrust = rotation.mul_transpose(Lr_hat*Lr) - rotation.mul_transpose(Dr_hat*Dr); // Use line below for previous thrust implementation with Blade Element Theory Drag
+        thrust -= rotation.mul_transpose(Dr_hat*Dr);
 
 
 
