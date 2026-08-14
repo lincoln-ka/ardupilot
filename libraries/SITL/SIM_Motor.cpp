@@ -112,20 +112,20 @@ void Motor::calculate_forces(const struct sitl_input &input,
     }
 
     if (use_drag) {
-            //master branch implementation start//
+        //     //master branch implementation start//
 
-        // Momentum drag is modelled as isotropic, scaled by the total
-        // thrust, which handles tilted motors correctly. The component
-        // along the rotor axis is really a 'hack' to compensate for
-        // incorrect modelling of the variation of thrust with inflow
-        // velocity. If not applied, the vehicle will climb at an
-        // unrealistic rate during operation in STABILIZE. TODO replace
-        // prop and motor model with one based on DC motor, momentum
-        // disc and blade element theory.
-        const float momentum_drag_factor = momentum_drag_coefficient * sqrtf(air_density * true_prop_area * thrust.length());
-        thrust -= motor_vel * momentum_drag_factor;
+        // // Momentum drag is modelled as isotropic, scaled by the total
+        // // thrust, which handles tilted motors correctly. The component
+        // // along the rotor axis is really a 'hack' to compensate for
+        // // incorrect modelling of the variation of thrust with inflow
+        // // velocity. If not applied, the vehicle will climb at an
+        // // unrealistic rate during operation in STABILIZE. TODO replace
+        // // prop and motor model with one based on DC motor, momentum
+        // // disc and blade element theory.
+        // const float momentum_drag_factor = momentum_drag_coefficient * sqrtf(air_density * true_prop_area * thrust.length());
+        // thrust -= motor_vel * momentum_drag_factor;
 
-        //master branch implementation end//
+        // //master branch implementation end//
         
         
         float Rr = sqrtf(true_prop_area/(3.1415)); // Rotor radius in (m)
