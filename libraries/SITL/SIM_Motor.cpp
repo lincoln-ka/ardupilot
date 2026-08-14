@@ -128,18 +128,18 @@ void Motor::calculate_forces(const struct sitl_input &input,
         // //master branch implementation end//
         
         
-        float Rr = sqrtf(true_prop_area/(3.1415)); // Rotor radius in (m)
+        float Rr = sqrtf(true_prop_area/(3.1415f)); // Rotor radius in (m)
         float Vperp = sqrtf(sq(Vr.x)+sq(Vr.y)); // Velocity perpendicular to rotor (m/s). Use line below if checking corrolation with matlab 
         //float Vhrr = vr.x
         //motor rpm aquisition ref SIM_Frame.cpp:685
 
         // Arace Griffon Pro Params
-        float Nb = 2; // Number of blades in rotor
-        float c = 0.025; // Blade cord (m) assumed constant
-        float rho = 1.2682; //used for checking matlab corrolation
-        float Ct = (7*9.81)/(Nb*rho*c*sq(Rr)*Rr*sq(5500)); //Coefficient of thrust assuming hover achieved at 5500rpm. TODO Check logs for hover rpm and change but use 5500 to verify implementation
+        float Nb = 2.0f; // Number of blades in rotor
+        float c = 0.025f; // Blade cord (m) assumed constant
+        float rho = 1.2682f; //used for checking matlab corrolation
+        float Ct = (7*9.81f)/(Nb*rho*c*sq(Rr)*Rr*sq(5500)); //Coefficient of thrust assuming hover achieved at 5500rpm. TODO Check logs for hover rpm and change but use 5500 to verify implementation
 
-        float Lr = 0.5*Nb*rho*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
+        float Lr = 0.5f*Nb*rho*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
         float Dr = 0;
         if (rpm > 1.0f) { // avoid div-by-zero/NaN when motor is stationary
             Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
