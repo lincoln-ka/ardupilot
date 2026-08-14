@@ -106,7 +106,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
     // possibly rotate the thrust vector and the rotor torque
     if (!is_zero(roll) || !is_zero(pitch)) {
         rotation.from_euler(radians(roll), radians(pitch), 0);
-        Vr = rotation * motor_vel;
+        Vr = rotation.mul_transpose * motor_vel;
         thrust = rotation * thrust;
         rotor_torque = rotation * rotor_torque;
     }
@@ -158,7 +158,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
         Vector3f Lr_hat(0,0,-1); // Unit Vector for thrust in motor frame
 
         //thrust = rotation.mul_transpose(Lr_hat*Lr) - rotation.mul_transpose(Dr_hat*Dr); // Use line below for previous thrust implementation with Blade Element Theory Drag
-        thrust -= rotation.mul_transpose(Dr_hat*Dr);
+        thrust -= rotation*(Dr_hat*Dr);
 
 
 
