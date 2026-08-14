@@ -140,7 +140,10 @@ void Motor::calculate_forces(const struct sitl_input &input,
         float Ct = (7*9.81)/(Nb*rho*c*sq(Rr)*Rr*sq(5500)); //Coefficient of thrust assuming hover achieved at 5500rpm. TODO Check logs for hover rpm and change but use 5500 to verify implementation
 
         float Lr = 0.5*Nb*rho*c*sq(Rr)*Rr*sq(rpm)*Ct; // Rotor Lift (N)
-        float Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
+        float Dr = 0;
+        if (rpm > 1.0f) { // avoid div-by-zero/NaN when motor is stationary
+            Dr = (Lr*fabsf(Vperp))/(Rr*rpm); // Rotor Drag (N)
+        }
 
         // @LoggerMessage: BET
         // @Description: Blade Element Theory rotor forces
