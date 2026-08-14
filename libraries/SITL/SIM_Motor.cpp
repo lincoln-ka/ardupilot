@@ -106,7 +106,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
     // possibly rotate the thrust vector and the rotor torque
     if (!is_zero(roll) || !is_zero(pitch)) {
         rotation.from_euler(radians(roll), radians(pitch), 0);
-        Vr = rotation.mul_transpose * motor_vel;
+        Vr = rotation.mul_transpose(motor_vel);
         thrust = rotation * thrust;
         rotor_torque = rotation * rotor_torque;
     }
