@@ -30,6 +30,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
                              const Vector3f &gyro,
                              float air_density,
                              float voltage,
+                             float &rpm,
                              bool use_drag)
 {
 
@@ -47,8 +48,9 @@ void Motor::calculate_forces(const struct sitl_input &input,
 
     // apply slew limiter to command
     uint64_t now_us = AP_HAL::micros64();
-    if (last_calc_us != 0 && slew_max > 0) {
-        float dt = (now_us - last_calc_us)*1.0e-6;
+    // dt since the last call; zero on the first call so slew/spin-up dynamics don't jump
+    const float dt = (last_calc_us != 0) ? (now_us - last_calc_us)*1.0e-6f : 0.0f;
+    if (slew_max > 0) {
         float slew_max_change = slew_max * dt;
         command = constrain_float(command, last_command-slew_max_change, last_command+slew_max_change);
     }
@@ -99,26 +101,51 @@ void Motor::calculate_forces(const struct sitl_input &input,
     last_change_usec = now;
 
     // possibly rotate the thrust vector and the rotor torque
+    // rotation stays identity for untilted motors so it can be reused below
+    // (Matrix3f's default ctor zeroes the matrix, it is not identity)
+    Matrix3f rotation;
+    rotation.identity();
     if (!is_zero(roll) || !is_zero(pitch)) {
-        Matrix3f rotation;
         rotation.from_euler(radians(roll), radians(pitch), 0);
         thrust = rotation * thrust;
         rotor_torque = rotation * rotor_torque;
     }
 
     if (use_drag) {
-        // calculate momentum drag per motor
-        const float momentum_drag_factor = momentum_drag_coefficient * sqrtf(air_density * true_prop_area);
-        Vector3f momentum_drag;
-        momentum_drag.x = momentum_drag_factor * motor_vel.x * (sqrtf(fabsf(thrust.y)) + sqrtf(fabsf(thrust.z)));
-        momentum_drag.y = momentum_drag_factor * motor_vel.y * (sqrtf(fabsf(thrust.x)) + sqrtf(fabsf(thrust.z)));
-        // The application of momentum drag to the Z axis is a 'hack' to compensate for incorrect modelling
-        // of the variation of thust with inflow velocity. If not applied, the vehicle will
-        // climb at an unrealistic rate during operation in STABILIZE. TODO replace prop and motor model in
-        // with one based on DC motor, momentum disc and blade element theory.
-        momentum_drag.z = momentum_drag_factor * motor_vel.z * (sqrtf(fabsf(thrust.x)) + sqrtf(fabsf(thrust.y)) + sqrtf(fabsf(thrust.z)));
+        // Rotor-induced drag, following Miller (2025) "Optimal Control of the
+        // Landing Transition Phase for a Tiltrotor UAV", Eq. 4.13/4.14:
+        //   Dr = Lr * |Vh| / (Rr * omega_bar)
+        // Lr is taken as the thrust already computed above (calc_thrust());
+        // Vh is the in-plane (advance) velocity component of the rotor disk.
 
-        thrust -= momentum_drag;
+        // This motor model has no rotor inertia state of its own (thrust
+        // responds directly to command), so give rpm a simple first-order
+        // spin-up response toward a command-driven target. rpm_max matches
+        // the Griffin Pro rotor speed cap used in Miller's optimal control
+        // problem (Table 2.2); spinup_tau is an estimate.
+        // TODO: replace with measured Griffin Pro motor/ESC response.
+        constexpr float rpm_max = 10000.0f;
+        constexpr float spinup_tau = 0.15f;
+        const float target_rpm = last_command * rpm_max;
+        rpm += (target_rpm - rpm) * constrain_float(dt / spinup_tau, 0.0f, 1.0f);
+        rpm = MAX(rpm, 0.0f);
+
+        // resolve vehicle velocity into the rotor's own (possibly tilted)
+        // frame so Vperp is the true in-plane velocity of the disk
+        const Vector3f Vr = rotation.mul_transpose(motor_vel);
+        const float Vperp = sqrtf(sq(Vr.x) + sq(Vr.y));
+
+        const float Rr = sqrtf(true_prop_area / float(M_PI)); // rotor radius (m)
+        float Dr = 0.0f;
+        if (rpm > 1.0f) {
+            Dr = (thrust.length() * Vperp) / (Rr * rpm);
+        }
+
+        if (Vperp > 1.0e-6f) {
+            Vector3f Dr_hat(Vr.x, Vr.y, 0.0f);
+            Dr_hat /= Vperp;
+            thrust -= rotation * (Dr_hat * Dr);
+        }
     }
 
     // calculate total torque in newton-meters

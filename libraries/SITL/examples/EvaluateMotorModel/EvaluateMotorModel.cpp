@@ -98,12 +98,13 @@ void setup(void)
 
     ::printf("time, PWM, thrust, torque, current\n");
     const Vector3f gyro {};
+    float rpm = 0.0f;
     for (uint16_t PWM = frame.get_pwm_min(); PWM <= frame.get_pwm_max(); PWM++) {
         input.servos[0] = PWM;
 
         Vector3f torque;
         Vector3f thrust;
-        motor.calculate_forces(input, 0, torque, thrust, velocity3, gyro, ref_air_density, voltage, true);
+        motor.calculate_forces(input, 0, torque, thrust, velocity3, gyro, ref_air_density, voltage, rpm, true);
 
         ::printf("%0.2f, %u, %0.2f, %0.2f, %0.2f\n", time * 1.0e-6, PWM, -thrust.z, torque.z, motor.get_current());
 
