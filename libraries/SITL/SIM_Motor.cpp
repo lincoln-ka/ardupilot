@@ -18,6 +18,7 @@
 
 #include "SIM_Motor.h"
 #include <AP_Motors/AP_Motors.h>
+#include <AP_Logger/AP_Logger.h>
 
 using namespace SITL;
 
@@ -144,7 +145,21 @@ void Motor::calculate_forces(const struct sitl_input &input,
         if (Vperp > 1.0e-6f) {
             Vector3f Dr_hat(Vr.x, Vr.y, 0.0f);
             Dr_hat /= Vperp;
-            thrust -= rotation * (Dr_hat * Dr);
+            Vector3f MT_d = rotation * (Dr_hat * Dr);
+            thrust -= MT_d;
+
+            // @LoggerMessage: MT
+            // @Description: SITL rotor momentum drag
+            // @Field: TimeUS: Time since system startup
+            // @Field: Inst: motor instance
+            // @Field: Dx: momentum drag force, X-axis
+            // @Field: Dy: momentum drag force, Y-axis
+            // @Field: Dz: momentum drag force, Z-axis
+            AP::logger().WriteStreaming("MT", "TimeUS,Inst,Dx,Dy,Dz",
+                                         "QBfff",
+                                         AP_HAL::micros64(),
+                                         servo,
+                                         MT_d.x, MT_d.y, MT_d.z);
         }
     }
 
