@@ -1,0 +1,105 @@
+# Griffin Pro tilt-quadplane SITL frame model
+# for use with: sim_vehicle.py -v ArduPlane -f quadplane-tilt:GriffinPro.json --add-param-file=GriffinPro.parm
+#
+# Values below are carried over from the SIM_FRM_* lines in GriffinPro.parm,
+# which are NOT real ArduPilot parameters (verified: no SIM_FRM_* AP_Param
+# exists anywhere in libraries/SITL) and so were never actually being applied.
+# This JSON is the mechanism SIM_Frame::load_frame_params() actually reads
+# (see the FRAME_VAR list in SIM_Frame.cpp) - it feeds effective_prop_area /
+# velocity_max used by SIM_Motor::calc_thrust()'s "lardu" (ret2) curve.
+#
+# Frame values derived from flight log 2025-07-16/00000134.BIN (6S 30Ah, MTOW 8.5kg, cruise 22m/s).
+#
+# The same file is ALSO parsed by Plane::load_coeffs() (SIM_Plane.cpp) because the
+# frame string "quadplane-tilt:GriffinPro.json" is passed to the Plane constructor first,
+# so the fixed-wing aero coefficients at the bottom are read from here too (unknown keys
+# are ignored by both loaders). Fixed-wing block identified from flight log 00000131.BIN
+# (8.5 kg takeoff mass) with scripts/aero_id.py - see scripts/aero_id_out/00000131_report.md.
+#
+# PATH GOTCHA: SITL resolves absolute paths relative to its working directory (leading "/" is
+# stripped, AP_Filesystem_posix.cpp), so "quadplane-tilt:/mnt/c/.../GriffinPro.json" only loads
+# if "<cwd>/mnt/c/..." exists - otherwise arduplane panics with "<file> failed to load". Either
+# run sim_vehicle.py from a directory containing a symlink "mnt -> /mnt" (e.g. ln -s /mnt ~/mnt)
+# or pass a path relative to that directory. Successful load prints both
+# "Loaded plane aero coefficients from ..." and "Loaded model params from ...".
+
+{
+    # frame mass in kg - QuadPlane scales this by 1.5 for total aircraft mass
+    # (5.667 * 1.5 = 8.5kg, the takeoff mass of log 00000131; the previous 4.67 gave 7.0kg)
+    "mass" : 5.667,
+
+    # vehicle diagonal size, m
+    "diagonal_size" : 1.0,
+
+    # reference test used to estimate drag - no dedicated steady-angle test
+    # logged yet, so refSpd reuses AIRSPEED_CRUISE and refAngle/refTempC/
+    # refRotRate are left at their library defaults. Replace refSpd/refAngle
+    # with real numbers from a steady-speed/steady-angle test if available.
+    "refSpd" : 22.0,
+    "refAngle" : 45.0,
+    "refTempC" : 25,
+    "refRotRate" : 120,
+
+    # hover power reference: 56A at 22V measured in hover, current divided
+    # by the 1.5 mass scale (56 / 1.5 = 37.4A)
+    "refVoltage" : 22.0,
+    "refCurrent" : 37.4,
+    "refAlt" : 584,
+
+    # battery: 6S 30Ah, resistance from V/I fit of the log
+    "refBatRes" : 0.02,
+    "maxVoltage" : 25.2,
+    "battCapacityAh" : 30,
+
+    # MOT_THST_EXPO
+    "propExpo" : 0.65,
+
+    # CTUN.ThO at hover: real Q_M_THST_HOVER 0.355 divided by the 1.5 mass scale
+    "hoverThrOut" : 0.237,
+
+    # MOT_PWM_MIN / MOT_PWM_MAX
+    "pwmMin" : 1000,
+    "pwmMax" : 2000,
+
+    # MOT_SPIN_MIN / MOT_SPIN_MAX
+    "spin_min" : 0.13,
+    "spin_max" : 0.95,
+
+    # 4 x ~16 inch rotors, sized from hover power via momentum theory
+    "disc_area" : 0.5,
+
+    # momentum drag coefficient
+    "mdrag_coef" : 0.2,
+
+    # number of VTOL motors
+    "num_motors" : 4,
+
+    # ---- fixed-wing aero (Plane::load_coeffs, SIM_Plane.cpp) identified from 00000131.BIN ----
+    # Whole-aircraft coefficients on the wing area, alpha in rad, elevator input = (pwm-1500)/500.
+    # Logged trim at 21.1 m/s: pitch -1.9 deg, alpha -2.67 deg, elevator -0.12, CL 0.717, CD 0.070.
+    "s" : 0.45,
+    "b" : 2.13,
+    "c" : 0.211,
+    # CL0 anchored so that CL = 0.717 at the logged trim alpha; CL_alpha is only bracketed by the log
+    # (2.8..7.6 /rad, alpha estimate is contaminated by vertical air motion) so the lifting-line value is used
+    "c_lift_0" : 0.9503,
+    "c_lift_a" : 5.00,
+    "c_lift_deltae" : 0,
+    # CD 0.070 at trim (thrust from ESC power via momentum theory, efficiency 0.656 calibrated in hover;
+    # the in-flight power-variation fit gives 0.76 -> CD 0.083), split with oswald 0.8
+    "c_drag_p" : 0.0496,
+    "oswald" : 0.8,
+    "c_drag_deltae" : 0,
+    # stall not identifiable from a cruise-only log - library defaults
+    "alpha_stall" : 0.4712,
+    "mcoeff" : 50,
+    # pitching moment. NOTE SIM_Plane assigns qbar*S*c*(...) straight to rot_accel (no inertia), so these
+    # are angular acceleration per (qbar*S*c) = physical Cm / Jy. c_m_deltae and c_m_0 fitted from the log;
+    # c_m_a is weakly identified (static stability small); c_m_q = physical -25 / Jy 0.48 plus 0.48 to
+    # cancel the SIM_Frame rotational damping term.
+    "c_m_0" : 0.0487,
+    "c_m_a" : -0.0492,
+    "c_m_q" : -51.35,
+    "c_m_deltae" : 0.4203,
+    "CGOffset" : [0, 0, 0]
+}

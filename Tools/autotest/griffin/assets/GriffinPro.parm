@@ -1,0 +1,182 @@
+# ARACE GriffinPro tilt-quadplane SITL model
+# for use with: sim_vehicle.py -v ArduPlane -f quadplane-tilt --add-param-file=GriffinPro.parm
+# derived from flight log 2025-07-16/00000134.BIN (6S 30Ah, MTOW 8.5kg, cruise 22m/s)
+
+# --- physical model ---
+# quadplane sim scales aircraft mass to 1.5x frame model mass: 5.67 * 1.5 = 8.5kg MTOW
+SIM_FRM_MASS     5.67
+SIM_FRM_DIAG_SZ  1.0
+# hover thrust fraction: real Q_M_THST_HOVER 0.355 divided by the 1.5 mass scale
+SIM_FRM_HOVR_THR 0.237
+SIM_FRM_EXPO     0.65
+SIM_FRM_PWM_MIN  1000
+SIM_FRM_PWM_MAX  2000
+SIM_FRM_SPIN_MIN 0.13
+SIM_FRM_SPIN_MAX 0.95
+# hover power reference: 56A at 22V measured in hover, current divided by 1.5 mass scale
+SIM_FRM_REF_VOLT 22.0
+SIM_FRM_REF_AMP  37.4
+SIM_FRM_REF_ALT  584
+# 4 x ~16 inch rotors, from hover power via momentum theory
+SIM_FRM_DISCAREA 0.5
+# enable momentum drag for realistic airbraking in back-transitions
+SIM_FRM_MDRAG    0.2
+
+# --- battery: 6S 30Ah, resistance from V/I fit of the log ---
+SIM_FRM_BAT_VOLT 25.2
+SIM_FRM_BAT_CAP  30
+SIM_FRM_BAT_RES  0.02
+BATT_MONITOR     4
+BATT_CAPACITY    30000
+BATT_ARM_VOLT    22
+Q_M_BAT_VOLT_MAX 26.1
+Q_M_BAT_VOLT_MIN 20
+
+# --- motor RPM / vibration: rear rotors 5584rpm at hover (0.554 output) ---
+SIM_VIB_MOT_MAX  168
+SIM_VIB_MOT_HMNC 1
+SIM_VIB_MOT_MULT 1
+
+# --- VTOL motors ---
+Q_M_PWM_MIN      1000
+Q_M_PWM_MAX      2000
+Q_M_SPIN_ARM     0.1
+Q_M_SPIN_MIN     0.13
+Q_M_SPIN_MAX     0.95
+Q_M_THST_EXPO    0.65
+Q_M_THST_HOVER   0.355
+Q_M_HOVER_LEARN  2
+Q_M_SPOOL_TIME   0.25
+Q_M_YAW_HEADROOM 50
+
+# --- tilt mechanism ---
+Q_TILT_ENABLE    1
+Q_TILT_TYPE      2
+Q_TILT_MASK      5
+Q_TILT_MAX       72
+Q_TILT_RATE_UP   80
+Q_TILT_RATE_DN   16
+Q_TILT_YAW_ANGLE 15
+
+# --- transitions ---
+Q_TRANSITION_MS  2500
+Q_BACKTRANS_MS   4000
+Q_TRANS_DECEL    1.1
+Q_TRANS_FAIL     12
+Q_TRANS_FAIL_ACT 1
+Q_OPTIONS        413705
+Q_ANGLE_MAX      4000
+Q_ASSIST_SPEED   0.1
+Q_ASSIST_ANGLE   48
+Q_ASSIST_DELAY   0.4
+Q_FWD_THR_USE    1
+Q_FWD_THR_GAIN   2
+Q_FWD_PIT_LIM    1
+
+# --- VTOL attitude control ---
+Q_A_ANG_RLL_P    5
+Q_A_ANG_PIT_P    5
+Q_A_ANG_YAW_P    2
+Q_A_RAT_RLL_P    0.14
+Q_A_RAT_RLL_I    0.14
+Q_A_RAT_RLL_D    0.001
+Q_A_RAT_PIT_P    0.2
+Q_A_RAT_PIT_I    0.2
+Q_A_RAT_PIT_D    0.004
+Q_A_RAT_YAW_P    0.7
+Q_A_RAT_YAW_I    0.07
+Q_A_RAT_YAW_D    0.007
+Q_A_ACCEL_R_MAX  70000
+Q_A_ACCEL_P_MAX  60000
+Q_A_ACCEL_Y_MAX  9091
+Q_A_INPUT_TC     0.2
+Q_A_THR_MIX_MAX  0.7
+
+# --- VTOL position control ---
+Q_P_POSXY_P      0.5
+Q_P_POSZ_P       1.5
+Q_P_VELXY_P      0.6
+Q_P_VELXY_I      0.3
+Q_P_VELXY_D      0.17
+Q_P_VELZ_P       5
+Q_P_ACCZ_P       0.45
+Q_P_ACCZ_I       1
+Q_P_ANGLE_MAX    30
+Q_P_JERK_XY      2
+Q_P_JERK_Z       2.5
+
+# --- VTOL navigation ---
+Q_WP_SPEED       600
+Q_WP_SPEED_UP    250
+Q_WP_SPEED_DN    150
+Q_WP_ACCEL       250
+Q_WP_ACCEL_Z     100
+Q_WP_RADIUS      120
+Q_LOIT_SPEED     1250
+Q_LOIT_ANG_MAX   30
+Q_LOIT_ACC_MAX   500
+Q_LOIT_BRK_ACCEL 75
+Q_RTL_ALT        50
+Q_RTL_ALT_MIN    10
+Q_LAND_FINAL_ALT 6
+Q_LAND_FINAL_SPD 0.7
+Q_LAND_ALTCHG    0.8
+
+# --- fixed wing ---
+AIRSPEED_CRUISE  22
+AIRSPEED_MIN     14
+AIRSPEED_MAX     28
+PTCH_LIM_MAX_DEG 22
+PTCH_LIM_MIN_DEG -19
+ROLL_LIMIT_DEG   40
+TRIM_THROTTLE    46
+THR_MAX          78
+THR_SLEWRATE     70
+SCALING_SPEED    15
+RLL2SRV_RMAX     75
+RLL2SRV_TCONST   0.5
+PTCH2SRV_RMAX_UP 75
+PTCH2SRV_RMAX_DN 75
+PTCH2SRV_TCONST  0.75
+PTCH2SRV_RLL     1.3
+WP_RADIUS        90
+WP_LOITER_RAD    150
+RTL_RADIUS       150
+RTL_ALTITUDE     150
+
+# --- TECS ---
+TECS_CLMB_MAX    4.5
+TECS_SINK_MAX    5
+TECS_SINK_MIN    1.8
+TECS_TIME_CONST  5
+TECS_THR_DAMP    0.6
+TECS_PTCH_DAMP   0.5
+TECS_INTEG_GAIN  0.3
+TECS_SPDWEIGHT   0.5
+TECS_PITCH_MAX   22
+TECS_PITCH_MIN   -19
+TECS_RLL2THR     3
+TECS_VERT_ACC    7
+TECS_LAND_ARSPD  14
+TECS_LAND_SINK   0.25
+TECS_APPR_SMAX   5.5
+
+# --- harmonic notch on ESC RPM, as flown ---
+INS_GYRO_FILTER  30
+INS_HNTCH_ENABLE 1
+INS_HNTCH_MODE   3
+INS_HNTCH_FREQ   60
+INS_HNTCH_BW     20
+INS_HNTCH_ATT    30
+INS_HNTCH_HMNCS  3
+INS_HNTCH_REF    1
+INS_HNTCH_OPTS   18
+
+# --- Servos
+SERVO12_FUNCTION 76
+SERVO13_FUNCTION 75
+SERVO12_MIN 1000
+SERVO12_MAX 2000
+SERVO13_MIN 1000
+SERVO13_MAX 2000
+
