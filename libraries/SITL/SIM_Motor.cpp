@@ -68,7 +68,7 @@ void Motor::calculate_forces(const struct sitl_input &input,
     float velocity_in = MAX(0, -motor_vel.projected(thrust_vector).z);
 
     // get thrust for untilted motor
-    float motor_thrust = calc_thrust(command, air_density, velocity_in, voltage_scale);
+    float motor_thrust = calc_thrust(command, air_density, velocity_in, voltage_scale, rpm, dt);
 
     // the yaw torque of the motor
     const float yaw_scale = 0.05 * diagonal_size * motor_thrust;
@@ -134,12 +134,22 @@ void Motor::calculate_forces(const struct sitl_input &input,
         // resolve vehicle velocity into the rotor's own (possibly tilted)
         // frame so Vperp is the true in-plane velocity of the disk
         const Vector3f Vr = rotation.mul_transpose(motor_vel);
-        const float Vperp = sqrtf(sq(Vr.x) + sq(Vr.y));
+        // const float Vperp = sqrtf(sq(Vr.x) + sq(Vr.y));
+        const float Vperp = (Vr.x);
 
-        const float Rr = sqrtf(true_prop_area / float(M_PI)); // rotor radius (m)
+        // const float Rr = sqrtf(true_prop_area / float(M_PI)); // rotor radius (m)
+        const float Rr = 0.175f; // rotor radius (m)
+
+        // below this fraction of rpm_max the rotor isn't spinning fast
+        // enough for the momentum-theory H-force model below to be valid
+        // (e.g. windmilling/stopped during forward-flight cruise)
+        constexpr float rpm_idle_frac = 0.1f;
+        constexpr float RPM_TO_RADS = 2.0f * float(M_PI) / 60.0f;
         float Dr = 0.0f;
-        if (rpm > 1.0f) {
-            Dr = (thrust.length() * Vperp) / (Rr * rpm);
+        if (rpm > rpm_idle_frac * rpm_max) {
+            const float omega = rpm * RPM_TO_RADS;
+            // const float omega = rpm;
+            Dr = (thrust.length() * Vperp) / (Rr * omega);
         }
 
         if (Vperp > 1.0e-6f) {
@@ -148,18 +158,40 @@ void Motor::calculate_forces(const struct sitl_input &input,
             Vector3f MT_d = rotation * (Dr_hat * Dr);
             thrust -= MT_d;
 
-            // @LoggerMessage: MT
-            // @Description: SITL rotor momentum drag
+            // @LoggerMessage: MTD0
+            // @Description: SITL rotor momentum drag, motor 0
             // @Field: TimeUS: Time since system startup
-            // @Field: Inst: motor instance
             // @Field: Dx: momentum drag force, X-axis
             // @Field: Dy: momentum drag force, Y-axis
             // @Field: Dz: momentum drag force, Z-axis
-            AP::logger().WriteStreaming("MT", "TimeUS,Inst,Dx,Dy,Dz",
-                                         "QBfff",
-                                         AP_HAL::micros64(),
-                                         servo,
-                                         MT_d.x, MT_d.y, MT_d.z);
+
+            // @LoggerMessage: MTD1
+            // @Description: SITL rotor momentum drag, motor 1
+            // @Field: TimeUS: Time since system startup
+            // @Field: Dx: momentum drag force, X-axis
+            // @Field: Dy: momentum drag force, Y-axis
+            // @Field: Dz: momentum drag force, Z-axis
+
+            // @LoggerMessage: MTD2
+            // @Description: SITL rotor momentum drag, motor 2
+            // @Field: TimeUS: Time since system startup
+            // @Field: Dx: momentum drag force, X-axis
+            // @Field: Dy: momentum drag force, Y-axis
+            // @Field: Dz: momentum drag force, Z-axis
+
+            // @LoggerMessage: MTD3
+            // @Description: SITL rotor momentum drag, motor 3
+            // @Field: TimeUS: Time since system startup
+            // @Field: Dx: momentum drag force, X-axis
+            // @Field: Dy: momentum drag force, Y-axis
+            // @Field: Dz: momentum drag force, Z-axis
+            static const char *mt_names[4] = { "MTD0", "MTD1", "MTD2", "MTD3" };
+            if (servo < ARRAY_SIZE(mt_names)) {
+                AP::logger().WriteStreaming(mt_names[servo], "TimeUS,Dx,Dy,Dz",
+                                             "Qfff",
+                                             AP_HAL::micros64(),
+                                             MT_d.x, MT_d.y, MT_d.z);
+            }
         }
     }
 
@@ -254,10 +286,44 @@ float Motor::pwm_to_command(float pwm) const
 /*
   calculate thrust given a command value
 */
-float Motor::calc_thrust(float command, float air_density, float velocity_in, float voltage_scale) const
+float Motor::calc_thrust(float command, float air_density, float velocity_in, float voltage_scale, float &rpm, float dt) const
 {
+    // Ardupilot Implementation
     float velocity_out = voltage_scale * max_outflow_velocity * sqrtf((1-mot_expo)*command + mot_expo*sq(command));
-    float ret = 0.5 * air_density * effective_prop_area * (sq(velocity_out) - sq(velocity_in));
+    float ret2 = 0.5 * air_density * effective_prop_area * (sq(velocity_out) - sq(velocity_in));
+
+    // MT Implementation
+
+    constexpr float rpm_max = 10000.0f;
+    constexpr float spinup_tau = 0.15f;
+    const float target_rpm = last_command * rpm_max;
+    rpm += (target_rpm - rpm) * constrain_float(dt / spinup_tau, 0.0f, 1.0f);
+    rpm = MAX(rpm, 0.0f);
+    
+    float Nb = 2.0f;
+    float c = 0.025f;
+    float Rr = 0.175f;
+    float frameMass = 7.0f;
+    float Ct = (9.81f * frameMass)/(Nb * air_density * c * sq(Rr) * Rr * sq(5500.0f));
+    float ret = (0.5f * Nb * air_density * c * sq(Rr) * Rr * sq(rpm) * Ct)/2.0f;
+
+    static const char *mt_names[4] = { "MTL0", "MTL1", "MTL2", "MTL3" };
+        if (servo < ARRAY_SIZE(mt_names)) {
+            AP::logger().WriteStreaming(mt_names[servo], "TimeUS,lmt,lardu",
+                                            "Qff",
+                                            AP_HAL::micros64(),
+                                            ret,ret2);
+        }
+
+    static const char *mtv_names[4] = { "MTV0", "MTV1", "MTV2", "MTV3" };
+        if (servo < ARRAY_SIZE(mtv_names)) {
+            AP::logger().WriteStreaming(mtv_names[servo], "TimeUS,rpm,rho",
+                                            "Qff",
+                                            AP_HAL::micros64(),
+                                            rpm,air_density);
+        }
+
+
 #if 0
     if (command > 0) {
         ::printf("air_density=%f effective_prop_area=%f velocity_in=%f velocity_max=%f\n",
