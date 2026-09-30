@@ -18,7 +18,6 @@
 
 #include "SIM_Motor.h"
 #include <AP_Motors/AP_Motors.h>
-#include <AP_Logger/AP_Logger.h>
 
 using namespace SITL;
 
@@ -157,41 +156,6 @@ void Motor::calculate_forces(const struct sitl_input &input,
             Dr_hat /= Vperp;
             Vector3f MT_d = rotation * (Dr_hat * Dr);
             thrust -= MT_d;
-
-            // @LoggerMessage: MTD0
-            // @Description: SITL rotor momentum drag, motor 0
-            // @Field: TimeUS: Time since system startup
-            // @Field: Dx: momentum drag force, X-axis
-            // @Field: Dy: momentum drag force, Y-axis
-            // @Field: Dz: momentum drag force, Z-axis
-
-            // @LoggerMessage: MTD1
-            // @Description: SITL rotor momentum drag, motor 1
-            // @Field: TimeUS: Time since system startup
-            // @Field: Dx: momentum drag force, X-axis
-            // @Field: Dy: momentum drag force, Y-axis
-            // @Field: Dz: momentum drag force, Z-axis
-
-            // @LoggerMessage: MTD2
-            // @Description: SITL rotor momentum drag, motor 2
-            // @Field: TimeUS: Time since system startup
-            // @Field: Dx: momentum drag force, X-axis
-            // @Field: Dy: momentum drag force, Y-axis
-            // @Field: Dz: momentum drag force, Z-axis
-
-            // @LoggerMessage: MTD3
-            // @Description: SITL rotor momentum drag, motor 3
-            // @Field: TimeUS: Time since system startup
-            // @Field: Dx: momentum drag force, X-axis
-            // @Field: Dy: momentum drag force, Y-axis
-            // @Field: Dz: momentum drag force, Z-axis
-            static const char *mt_names[4] = { "MTD0", "MTD1", "MTD2", "MTD3" };
-            if (servo < ARRAY_SIZE(mt_names)) {
-                AP::logger().WriteStreaming(mt_names[servo], "TimeUS,Dx,Dy,Dz",
-                                             "Qfff",
-                                             AP_HAL::micros64(),
-                                             MT_d.x, MT_d.y, MT_d.z);
-            }
         }
     }
 
@@ -288,9 +252,9 @@ float Motor::pwm_to_command(float pwm) const
 */
 float Motor::calc_thrust(float command, float air_density, float velocity_in, float voltage_scale, float &rpm, float dt) const
 {
-    // Ardupilot Implementation
-    float velocity_out = voltage_scale * max_outflow_velocity * sqrtf((1-mot_expo)*command + mot_expo*sq(command));
-    float ret2 = 0.5 * air_density * effective_prop_area * (sq(velocity_out) - sq(velocity_in));
+    // Ardupilot Implementation (kept for reference, no longer used)
+    // float velocity_out = voltage_scale * max_outflow_velocity * sqrtf((1-mot_expo)*command + mot_expo*sq(command));
+    // float ret2 = 0.5 * air_density * effective_prop_area * (sq(velocity_out) - sq(velocity_in));
 
     // MT Implementation
 
@@ -306,23 +270,6 @@ float Motor::calc_thrust(float command, float air_density, float velocity_in, fl
     float frameMass = 7.0f;
     float Ct = (9.81f * frameMass)/(Nb * air_density * c * sq(Rr) * Rr * sq(5500.0f));
     float ret = (0.5f * Nb * air_density * c * sq(Rr) * Rr * sq(rpm) * Ct)/2.0f;
-
-    static const char *mt_names[4] = { "MTL0", "MTL1", "MTL2", "MTL3" };
-        if (servo < ARRAY_SIZE(mt_names)) {
-            AP::logger().WriteStreaming(mt_names[servo], "TimeUS,lmt,lardu",
-                                            "Qff",
-                                            AP_HAL::micros64(),
-                                            ret,ret2);
-        }
-
-    static const char *mtv_names[4] = { "MTV0", "MTV1", "MTV2", "MTV3" };
-        if (servo < ARRAY_SIZE(mtv_names)) {
-            AP::logger().WriteStreaming(mtv_names[servo], "TimeUS,rpm,rho",
-                                            "Qff",
-                                            AP_HAL::micros64(),
-                                            rpm,air_density);
-        }
-
 
 #if 0
     if (command > 0) {
